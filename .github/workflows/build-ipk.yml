@@ -58,29 +58,4 @@ jobs:
           name: luci-app-naiveproxy-ipk # Artifact 名称
           path: ${{ steps.find_ipk.output }} # 上传找到的 IPK 文件路径
 
-      - name: (Optional) Create Release and Upload IPK (需要配置 GitHub Token)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' # 仅在主分支 push 时创建 Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }} # 使用 Workflow Run Number 作为 Tag
-          release_name: Luci App IPK Release v${{ github.run_number }}
-          body: |
-            自动构建的 Luci 应用 IPK 包。
-            请根据你的 OpenWrt 版本和架构选择合适的 IPK 文件。
-          draft: false
-          prerelease: false
-        continue-on-error: true # 忽略 Release 创建失败的错误，不影响主流程
-
-      - name: (Optional) Upload IPK to Release (需要配置 GitHub Token)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' # 仅在主分支 push 时上传 Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # 从 Release 创建步骤获取上传 URL
-          asset_path: ${{ steps.find_ipk.output }} # 上传 IPK 文件
-          asset_name: luci-app-naiveproxy-${{ github.run_number }}.ipk #  IPK 文件名
-          asset_content_type: application/octet-stream
-        continue-on-error: true # 忽略上传失败的错误，不影响主流程
+      
