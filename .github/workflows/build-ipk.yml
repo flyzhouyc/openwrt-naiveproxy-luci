@@ -24,8 +24,6 @@ jobs:
               rsync wget git-core subversion mercurial libxml-parser-perl \
               unzip gperf automake libtool shtool autoconf texinfo patchutils \
               bc diffstat curl file
-          make defconfig
-          make prepare
 
 
 
