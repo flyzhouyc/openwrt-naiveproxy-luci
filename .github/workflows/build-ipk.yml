@@ -24,12 +24,7 @@ jobs:
               unzip gperf automake libtool shtool autoconf texinfo patchutils \
               bc diffstat curl file
 
-          # 确保 scripts/feeds 可执行 (如果你的仓库里有 OpenWrt 构建系统)
-          chmod +x ./scripts/feeds
 
-          # 更新和安装 feeds (假设你的仓库里有 OpenWrt 构建系统)
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a -p luci
 
       #- name: Configure Build (Optional - 如果需要自定义 OpenWrt 配置)
         # (与 Docker 版本相同，如果需要自定义 OpenWrt 配置，可以在这里添加步骤)
