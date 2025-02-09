@@ -55,7 +55,7 @@ jobs:
           echo "IPK_PATH=$IPK_PATH" >> $GITHUB_OUTPUT # 将 IPK_PATH 设置为步骤的输出
 
       - name: Upload IPK Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: luci-app-naiveproxy-ipk # Artifact 名称
           path: ${{ steps.find_ipk.outputs.IPK_PATH }} # 上传找到的 IPK 文件路径 (从步骤输出获取)
