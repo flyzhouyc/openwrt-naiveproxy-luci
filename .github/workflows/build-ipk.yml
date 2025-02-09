@@ -22,13 +22,7 @@ jobs:
           entrypoint: /bin/bash
           arguments: -c "chmod +x /usr/bin/jq && ./scripts/feeds update -a && ./scripts/feeds install -a -p luci" # 更新 feeds 并安装 luci 相关依赖
 
-      #- name: Configure Build (Optional - 如果需要自定义 OpenWrt 配置)
-        # 如果你的 Luci 应用需要特定的 OpenWrt 配置，可以在这里添加配置步骤
-        # 例如，你可以复制一个预先配置好的 .config 文件到工作区，或者使用 sed 命令修改 .config 文件
-        # 示例： 复制 .config 文件
-        # run: cp .config files/.config
-        # 示例： 使用 sed 修改 .config 文件 (假设你要修改目标架构为 x86_64)
-        # run: sed -i 's/CONFIG_TARGET_x86_64=y/CONFIG_TARGET_x86_64=y/g' .config
+
 
       - name: Build Luci App
         uses: actions/docker/cli@v2
