@@ -42,10 +42,6 @@ jobs:
           # 编译你的 Luci 应用 (package name 需要根据你的 Makefile 修改)
           make package/luci-app-naiveproxy/compile V=s
 
-      - name: Install Luci App (可选，但通常推荐)
-        run: |
-          # 安装你的 Luci 应用 (package name 需要根据你的 Makefile 修改)
-          make package/luci-app-naiveproxy/install V=s
 
       - name: Find IPK file
         id: find_ipk
