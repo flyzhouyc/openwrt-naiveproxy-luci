@@ -17,6 +17,8 @@ jobs:
 
       - name: Set up Build Environment
         run: |
+          make defconfig
+          make prepare
           # 安装 OpenWrt 构建依赖 (常见的依赖，可能需要根据实际情况调整)
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses5-dev zlib1g-dev gawk gcc-multilib flex bison libssl-dev \
