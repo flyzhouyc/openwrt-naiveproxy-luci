@@ -2,9 +2,9 @@ name: Build Luci App IPK
 
 on:
   push:
-    branches: [ "main" ] # 或者你的主分支名称
+    branches: [ "master" ] # 或者你的主分支名称
   pull_request:
-    branches: [ "main" ] # 或者你的主分支名称
+    branches: [ "master" ] # 或者你的主分支名称
   workflow_dispatch: # 允许手动触发 Workflow
 
 jobs:
