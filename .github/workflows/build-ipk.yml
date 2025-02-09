@@ -1,4 +1,4 @@
-name: Build Luci App IPK
+name: Build Luci App IPK (No Docker)
 
 on:
   push:
@@ -9,78 +9,55 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 使用 Ubuntu 最新版本作为构建环境
+    runs-on: ubuntu-latest # 使用 Ubuntu 最新版本作为构建环境 (不再使用 Docker 镜像)
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up OpenWrt Build Environment
-        uses: docker/cli-action@v2 #  <-- 修改为 docker/cli-action
-        with:
-          image: ghcr.io/kiddin9/openwrt-build-action:latest # 使用一个预配置好的 OpenWrt 构建环境 Docker 镜像
-          entrypoint: /bin/bash
-          arguments: -c "chmod +x /usr/bin/jq && ./scripts/feeds update -a && ./scripts/feeds install -a -p luci" # 更新 feeds 并安装 luci 相关依赖
+      - name: Set up Build Environment
+        run: |
+          # 安装 OpenWrt 构建依赖 (常见的依赖，可能需要根据实际情况调整)
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses5-dev zlib1g-dev gawk gcc-multilib flex bison libssl-dev \
+              rsync wget git-core subversion mercurial libxml-parser-perl \
+              unzip gperf automake libtool shtool autoconf texinfo patchutils \
+              bc diffstat curl file
+
+          # 确保 scripts/feeds 可执行 (如果你的仓库里有 OpenWrt 构建系统)
+          chmod +x ./scripts/feeds
+
+          # 更新和安装 feeds (假设你的仓库里有 OpenWrt 构建系统)
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a -p luci
 
       #- name: Configure Build (Optional - 如果需要自定义 OpenWrt 配置)
-        # 如果你的 Luci 应用需要特定的 OpenWrt 配置，可以在这里添加配置步骤
-        # 例如，你可以复制一个预先配置好的 .config 文件到工作区，或者使用 sed 命令修改 .config 文件
-        # 示例： 复制 .config 文件
+        # (与 Docker 版本相同，如果需要自定义 OpenWrt 配置，可以在这里添加步骤)
+        # 例如，复制 .config 文件，或者使用 sed 修改 .config 文件
         # run: cp .config files/.config
-        # 示例： 使用 sed 修改 .config 文件 (假设你要修改目标架构为 x86_64)
         # run: sed -i 's/CONFIG_TARGET_x86_64=y/CONFIG_TARGET_x86_64=y/g' .config
 
       - name: Build Luci App
-        uses: docker/cli-action@v2 #  <-- 修改为 docker/cli-action
-        with:
-          image: ghcr.io/kiddin9/openwrt-build-action:latest
-          entrypoint: /bin/bash
-          arguments: -c "make package/luci-app-naiveproxy/compile" # 编译你的 Luci 应用 (package name 需要根据你的 Makefile 修改)
+        run: |
+          # 编译你的 Luci 应用 (package name 需要根据你的 Makefile 修改)
+          make package/luci-app-naiveproxy/compile V=s
 
-      - name: Install Luci App
-        uses: docker/cli-action@v2 #  <-- 修改为 docker/cli-action
-        with:
-          image: ghcr.io/kiddin9/openwrt-build-action:latest
-          entrypoint: /bin/bash
-          arguments: -c "make package/luci-app-naiveproxy/install" # 安装你的 Luci 应用 (package name 需要根据你的 Makefile 修改)
+      - name: Install Luci App (可选，但通常推荐)
+        run: |
+          # 安装你的 Luci 应用 (package name 需要根据你的 Makefile 修改)
+          make package/luci-app-naiveproxy/install V=s
 
       - name: Find IPK file
         id: find_ipk
-        uses: docker/cli-action@v2 #  <-- 修改为 docker/cli-action
-        with:
-          image: ghcr.io/kiddin9/openwrt-build-action:latest
-          entrypoint: /bin/bash
-          arguments: -c "find bin/packages -name '*luci-app-naiveproxy*.ipk' -print -quit" # 查找生成的 IPK 文件
+        run: |
+          # 查找生成的 IPK 文件
+          IPK_PATH=$(find bin/packages -name '*luci-app-naiveproxy*.ipk' -print -quit)
+          echo "IPK_PATH=$IPK_PATH" >> $GITHUB_OUTPUT # 将 IPK_PATH 设置为步骤的输出
 
       - name: Upload IPK Artifact
-        uses: actions/upload-artifact@v3 #  <-- 此处 actions/upload-artifact 是正确的
+        uses: actions/upload-artifact@v3
         with:
           name: luci-app-naiveproxy-ipk # Artifact 名称
-          path: ${{ steps.find_ipk.output }} # 上传找到的 IPK 文件路径
+          path: ${{ steps.find_ipk.outputs.IPK_PATH }} # 上传找到的 IPK 文件路径 (从步骤输出获取)
 
-      - name: (Optional) Create Release and Upload IPK (需要配置 GitHub Token)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' # 仅在主分支 push 时创建 Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }} # 使用 Workflow Run Number 作为 Tag
-          release_name: Luci App IPK Release v${{ github.run_number }}
-          body: |
-            自动构建的 Luci 应用 IPK 包。
-            请根据你的 OpenWrt 版本和架构选择合适的 IPK 文件。
-          draft: false
-          prerelease: false
-        continue-on-error: true # 忽略 Release 创建失败的错误，不影响主流程
-
-      - name: (Optional) Upload IPK to Release (需要配置 GitHub Token)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' # 仅在主分支 push 时上传 Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # 从 Release 创建步骤获取上传 URL
-          asset_path: ${{ steps.find_ipk.output }} # 上传 IPK 文件
-          asset_name: luci-app-naiveproxy-${{ github.run_number }}.ipk #  IPK 文件名
-          asset_content_type: application/octet-stream
-        continue-on-error: true # 忽略上传失败的错误，不影响主流程
+      
