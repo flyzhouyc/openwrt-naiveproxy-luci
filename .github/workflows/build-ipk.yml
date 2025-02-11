@@ -15,7 +15,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Set up OpenWrt SDK
-      uses: actions/docker@v2
+      uses: actions/docker@v3
       with:
         name: openwrt/sdk
         command: sh -c "sleep 3600" # Placeholder command, keep the container alive
