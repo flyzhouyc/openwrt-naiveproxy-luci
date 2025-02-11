@@ -14,6 +14,10 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
+        # 启用 multiverse 仓库
+        sudo add-apt-repository multiverse
+        # 再次更新软件包列表，使 multiverse 仓库生效
+        sudo apt-get update
         sudo apt-get install -y build-essential subversion libncurses5-dev zlib1g-dev gawk gcc multiverse-dev texinfo zlib1g-dev lbzip2 git
         sudo apt-get install -y python3 python2-minimal libpython3-dev python3-pip
         pip3 install --upgrade pip
