@@ -1,24 +1,15 @@
-name: Build naiveproxy IPK
+name: Debug Feeds and diffconfig
 
 on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
-  workflow_dispatch:
+  workflow_dispatch: # 仅手动触发
 
 jobs:
-  build:
+  debug:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '^1.20'
 
       - name: Prepare build environment
         run: |
@@ -27,25 +18,20 @@ jobs:
 
       - name: Clone OpenWrt source code
         run: |
-          rm -rf openwrt-source # Ensure clean clone
+          rm -rf openwrt-source
           git clone https://git.openwrt.org/openwrt/openwrt.git openwrt-source
           cd openwrt-source
-
-      - name: Copy naiveproxy package definition
-        run: |
-          mkdir -p openwrt-source/package/net
-          cp -r ./naiveproxy openwrt-source/package/net/ # Assuming naiveproxy in repo root
 
       - name: Clean feeds and packages directories
         run: |
           cd openwrt-source
-          rm -rf feeds/* packages/* # Clean feeds and packages
+          rm -rf feeds/* packages/*
 
       - name: Update and install feeds (verbose output, corrected option)
         run: |
           cd openwrt-source
-          ./scripts/feeds update -a --verbose # Corrected option: --verbose
-          ./scripts/feeds install -a --verbose # Corrected option: --verbose
+          ./scripts/feeds update -a --verbose
+          ./scripts/feeds install -a --verbose
 
       - name: Check for diffconfig after feeds install
         run: |
@@ -53,50 +39,5 @@ jobs:
           ls -l scripts/diffconfig
           if [ ! -f scripts/diffconfig ]; then
             echo "Error: scripts/diffconfig is still missing after feeds install!"
-            exit 1 # Fail workflow if diffconfig is missing
+            exit 1
           fi
-
-      - name: Force install diffconfig package (if it exists as a feed package)
-        run: |
-          cd openwrt-source
-          # 尝试强制安装 'diffconfig' 软件包 (如果 feeds 中存在名为 'diffconfig' 的包)
-          # 这步可能不会成功，因为 'diffconfig' 可能是 OpenWrt 源码自带的脚本，而不是 feed package
-          ./scripts/feeds install diffconfig --verbose || true  # 忽略错误，即使安装失败也继续
-
-      - name: Re-check for diffconfig after force install
-        run: |
-          cd openwrt-source
-          ls -l scripts/diffconfig
-          if [ ! -f scripts/diffconfig ]; then
-            echo "Error: scripts/diffconfig is still missing even after force install!"
-            exit 1 # Fail workflow if diffconfig is still missing
-          fi
-
-
-      - name: Configure build (x86_64 example)
-        run: |
-          cd openwrt-source
-          make defconfig # Revert to make defconfig
-          sed -i 's/# CONFIG_TARGET_x86_64 is not set/CONFIG_TARGET_x86_64=y/' .config
-          sed -i 's/# CONFIG_TARGET_PROFILE_DEFAULT is not set/CONFIG_TARGET_PROFILE_DEFAULT=y/' .config
-          sed -i '/CONFIG_PACKAGE_naiveproxy is not set/a CONFIG_PACKAGE_naiveproxy=m' .config
-          ./scripts/diffconfig .config .config.seed
-
-      - name: Compile naiveproxy package
-        run: |
-          cd openwrt-source
-          make package/naiveproxy/compile V=s
-
-      - name: Find and upload IPK
-        run: |
-          cd openwrt-source
-          IPK_PATH=$(find bin/packages/x86_64/net -name "naiveproxy_*.ipk")
-          echo "IPK path: $IPK_PATH"
-          echo "::set-output name=ipk_path::$IPK_PATH"
-        id: find_ipk
-
-      - name: Upload IPK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: naiveproxy-ipk
-          path: ${{ steps.find_ipk.outputs.ipk_path }}
