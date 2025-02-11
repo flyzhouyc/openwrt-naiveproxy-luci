@@ -1,55 +1,75 @@
-name: Build Luci App IPK (No Docker)
+name: Build naiveproxy IPK
 
 on:
   push:
-    branches: [ "master" ] # 或者你的主分支名称
+    branches: [ "master" ] # 或者你想要触发工作流的分支
   pull_request:
-    branches: [ "master" ] # 或者你的主分支名称
-  workflow_dispatch: # 允许手动触发 Workflow
+    branches: [ "master" ]
+  workflow_dispatch: # 允许手动触发工作流
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 使用 Ubuntu 最新版本作为构建环境 (不再使用 Docker 镜像)
+    runs-on: ubuntu-latest # 使用 Ubuntu 最新版本作为构建环境
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Build Environment
-        run: |
-          
-          # 安装 OpenWrt 构建依赖 (常见的依赖，可能需要根据实际情况调整)
-          sudo apt-get update
-          sudo apt-get install -y build-essential libncurses5-dev zlib1g-dev gawk gcc-multilib flex bison libssl-dev \
-              rsync wget git-core subversion mercurial libxml-parser-perl \
-              unzip gperf automake libtool shtool autoconf texinfo patchutils \
-              bc diffstat curl file
-
-
-
-      #- name: Configure Build (Optional - 如果需要自定义 OpenWrt 配置)
-        # (与 Docker 版本相同，如果需要自定义 OpenWrt 配置，可以在这里添加步骤)
-        # 例如，复制 .config 文件，或者使用 sed 修改 .config 文件
-        # run: cp .config files/.config
-        # run: sed -i 's/CONFIG_TARGET_x86_64=y/CONFIG_TARGET_x86_64=y/g' .config
-
-      - name: Build Luci App
-        run: |
-          # 编译你的 Luci 应用 (package name 需要根据你的 Makefile 修改)
-          make package/luci-app-naiveproxy/compile V=s
-
-
-      - name: Find IPK file
-        id: find_ipk
-        run: |
-          # 查找生成的 IPK 文件
-          IPK_PATH=$(find bin/packages -name '*luci-app-naiveproxy*.ipk' -print -quit)
-          echo "IPK_PATH=$IPK_PATH" >> $GITHUB_OUTPUT # 将 IPK_PATH 设置为步骤的输出
-
-      - name: Upload IPK Artifact
-        uses: actions/upload-artifact@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
-          name: luci-app-naiveproxy-ipk # Artifact 名称
-          path: ${{ steps.find_ipk.outputs.IPK_PATH }} # 上传找到的 IPK 文件路径 (从步骤输出获取)
+          go-version: '^1.20' # 或者你需要的 Go 版本
 
-      
+      - name: Prepare build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++ binutils bzip2 flex python perl make wget curl git rsync unzip libncurses5-dev zlib1g-dev gawk gettext libssl-dev python3-distutils python3-setuptools
+
+      - name: Clone OpenWrt source code
+        run: |
+          git clone https://git.openwrt.org/openwrt/openwrt.git openwrt-source
+          cd openwrt-source
+
+      - name: Copy naiveproxy package definition
+        run: |
+          mkdir -p openwrt-source/package/net
+          cp -r ../naiveproxy openwrt-source/package/net/
+
+      - name: Update and install feeds
+        run: |
+          cd openwrt-source
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure build (x86_64 example)
+        run: |
+          cd openwrt-source
+          # 示例配置：目标架构为 x86_64，并选择 naiveproxy 作为模块编译
+          # 你需要根据你的目标平台修改 .config 文件
+          sed -i 's/# CONFIG_TARGET_x86_64 is not set/CONFIG_TARGET_x86_64=y/' .config
+          sed -i 's/# CONFIG_TARGET_PROFILE_DEFAULT is not set/CONFIG_TARGET_PROFILE_DEFAULT=y/' .config # 默认 Profile
+          sed -i '/CONFIG_PACKAGE_naiveproxy is not set/a CONFIG_PACKAGE_naiveproxy=m' .config # 将 naiveproxy 编译为模块 (IPK)
+
+          # 如果你需要其他配置，例如 LuCI 支持，可以在这里添加 sed 命令修改 .config
+          # 例如： sed -i '/CONFIG_PACKAGE_luci is not set/a CONFIG_PACKAGE_luci=y' .config
+
+          ./scripts/diffconfig .config .config.seed # 可选：生成 seed config 文件，用于记录配置
+
+      - name: Compile naiveproxy package
+        run: |
+          cd openwrt-source
+          make package/naiveproxy/compile V=s # V=s 参数用于显示详细编译输出
+
+      - name: Find and upload IPK
+        run: |
+          cd openwrt-source
+          IPK_PATH=$(find bin/packages/x86_64/net -name "naiveproxy_*.ipk") # 查找生成的 IPK 文件
+          echo "IPK path: $IPK_PATH"
+          echo "::set-output name=ipk_path::$IPK_PATH" # 将 IPK 路径设置为输出变量
+        id: find_ipk # 给这个 step 设置 ID，方便后续步骤引用输出
+
+      - name: Upload IPK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: naiveproxy-ipk # artifact 名称
+          path: ${{ steps.find_ipk.outputs.ipk_path }} # 上传找到的 IPK 文件路径
