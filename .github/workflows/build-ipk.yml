@@ -41,11 +41,11 @@ jobs:
           cd openwrt-source
           rm -rf feeds/* packages/* # Clean feeds and packages
 
-      - name: Update and install feeds (verbose output)
+      - name: Update and install feeds (verbose output, corrected option)
         run: |
           cd openwrt-source
-          ./scripts/feeds update -a -v # Verbose output for update
-          ./scripts/feeds install -a -v # Verbose output for install
+          ./scripts/feeds update -a --verbose # Corrected option: --verbose
+          ./scripts/feeds install -a --verbose # Corrected option: --verbose
 
       - name: Check for diffconfig after feeds install
         run: |
@@ -55,6 +55,23 @@ jobs:
             echo "Error: scripts/diffconfig is still missing after feeds install!"
             exit 1 # Fail workflow if diffconfig is missing
           fi
+
+      - name: Force install diffconfig package (if it exists as a feed package)
+        run: |
+          cd openwrt-source
+          # 尝试强制安装 'diffconfig' 软件包 (如果 feeds 中存在名为 'diffconfig' 的包)
+          # 这步可能不会成功，因为 'diffconfig' 可能是 OpenWrt 源码自带的脚本，而不是 feed package
+          ./scripts/feeds install diffconfig --verbose || true  # 忽略错误，即使安装失败也继续
+
+      - name: Re-check for diffconfig after force install
+        run: |
+          cd openwrt-source
+          ls -l scripts/diffconfig
+          if [ ! -f scripts/diffconfig ]; then
+            echo "Error: scripts/diffconfig is still missing even after force install!"
+            exit 1 # Fail workflow if diffconfig is still missing
+          fi
+
 
       - name: Configure build (x86_64 example)
         run: |
@@ -79,7 +96,7 @@ jobs:
         id: find_ipk
 
       - name: Upload IPK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: naiveproxy-ipk
           path: ${{ steps.find_ipk.outputs.ipk_path }}
