@@ -96,7 +96,7 @@ jobs:
         id: find_ipk
 
       - name: Upload IPK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: naiveproxy-ipk
           path: ${{ steps.find_ipk.outputs.ipk_path }}
