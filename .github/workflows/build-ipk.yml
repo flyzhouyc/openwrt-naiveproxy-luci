@@ -53,7 +53,7 @@ jobs:
         cp bin/packages/flower/luci-app-naiveproxy_*.ipk ../release/
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: naiveproxy-luci.ipk
         path: release/luci-app-naiveproxy_*.ipk
