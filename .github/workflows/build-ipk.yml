@@ -44,7 +44,13 @@ jobs:
       run: |
         cd openwrt
         cp feeds.conf.default feeds.conf
-        echo 'CONFIG_PACKAGE_luci-app-naiveproxy=y' >> .config
+        cat >> .config <<EOF
+        CONFIG_TARGET_x86=y
+        CONFIG_TARGET_x86_64=y
+        CONFIG_TARGET_x86_64_DEVICE_generic=y
+        CONFIG_PACKAGE_luci-app-naiveproxy=y
+        CONFIG_PACKAGE_naiveproxy=y
+        EOF
         make defconfig
 
     - name: Download Dependencies
@@ -57,18 +63,22 @@ jobs:
     - name: Build Package
       run: |
         cd openwrt
-        make package/luci-app-naiveproxy/compile V=s -j$(nproc)
+        make package/luci-app-naiveproxy/compile V=s -j1
 
     - name: Upload IPK
       uses: actions/upload-artifact@v4
       with:
         name: luci-app-naiveproxy-ipk
-        path: openwrt/bin/packages/*/base/luci-app-naiveproxy*.ipk
+        path: |
+          openwrt/bin/packages/**/luci-app-naiveproxy_*.ipk
+          openwrt/bin/packages/**/naiveproxy_*.ipk
 
     - name: Create Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
       uses: softprops/action-gh-release@v1
       with:
-        files: openwrt/bin/packages/*/base/luci-app-naiveproxy*.ipk
-        tag_name: ${{ github.ref_name }}-${{ github.sha }}
+        files: |
+          openwrt/bin/packages/**/luci-app-naiveproxy_*.ipk
+          openwrt/bin/packages/**/naiveproxy_*.ipk
+        tag_name: release-${{ github.sha }}
         generate_release_notes: true
