@@ -23,7 +23,7 @@ jobs:
       - name: Prepare build environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential g++ binutils bzip2 flex python perl make wget curl git rsync unzip libncurses5-dev zlib1g-dev gawk gettext libssl-dev python3-distutils python3-setuptools
+          sudo apt-get install -y build-essential g++ binutils bzip2 flex python3 perl make wget curl git rsync unzip libncurses5-dev zlib1g-dev gawk gettext libssl-dev python3-setuptools python-is-python3
 
       - name: Clone OpenWrt source code
         run: |
@@ -49,10 +49,8 @@ jobs:
           sed -i 's/# CONFIG_TARGET_x86_64 is not set/CONFIG_TARGET_x86_64=y/' .config
           sed -i 's/# CONFIG_TARGET_PROFILE_DEFAULT is not set/CONFIG_TARGET_PROFILE_DEFAULT=y/' .config # 默认 Profile
           sed -i '/CONFIG_PACKAGE_naiveproxy is not set/a CONFIG_PACKAGE_naiveproxy=m' .config # 将 naiveproxy 编译为模块 (IPK)
-
           # 如果你需要其他配置，例如 LuCI 支持，可以在这里添加 sed 命令修改 .config
           # 例如： sed -i '/CONFIG_PACKAGE_luci is not set/a CONFIG_PACKAGE_luci=y' .config
-
           ./scripts/diffconfig .config .config.seed # 可选：生成 seed config 文件，用于记录配置
 
       - name: Compile naiveproxy package
