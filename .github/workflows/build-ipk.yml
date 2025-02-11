@@ -47,10 +47,17 @@ jobs:
         echo 'CONFIG_PACKAGE_luci-app-naiveproxy=y' >> .config
         make defconfig
 
+    - name: Download Dependencies
+      run: |
+        cd openwrt
+        make download V=s
+        make tools/install -j$(nproc)
+        make toolchain/install -j$(nproc)
+
     - name: Build Package
       run: |
         cd openwrt
-        make package/luci-app-naiveproxy/compile V=s
+        make package/luci-app-naiveproxy/compile V=s -j$(nproc)
 
     - name: Upload IPK
       uses: actions/upload-artifact@v4
