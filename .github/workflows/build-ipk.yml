@@ -40,10 +40,12 @@ jobs:
           cd openwrt-source
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-
       - name: Configure build (x86_64 example)
         run: |
           cd openwrt-source
+          # 首先生成默认的 .config 文件
+          make defconfig
+
           # 示例配置：目标架构为 x86_64，并选择 naiveproxy 作为模块编译
           # 你需要根据你的目标平台修改 .config 文件
           sed -i 's/# CONFIG_TARGET_x86_64 is not set/CONFIG_TARGET_x86_64=y/' .config
