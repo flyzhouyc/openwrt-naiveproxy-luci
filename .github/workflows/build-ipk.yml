@@ -53,7 +53,7 @@ jobs:
         make package/luci-app-naiveproxy/compile V=s
 
     - name: Upload IPK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: luci-app-naiveproxy-ipk
         path: openwrt/bin/packages/*/base/luci-app-naiveproxy*.ipk
