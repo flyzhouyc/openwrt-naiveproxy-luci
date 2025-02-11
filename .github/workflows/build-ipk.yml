@@ -10,11 +10,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
-
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - x86_64
+          
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-
+      
     - name: Setup Build Environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -26,59 +32,58 @@ jobs:
         python3-distutils python3-setuptools rsync subversion swig time \
         xsltproc zlib1g-dev
 
-    - name: Clone OpenWrt SDK
+    - name: Download OpenWrt SDK
       run: |
-        git clone https://github.com/openwrt/openwrt.git
-        cd openwrt
+        wget https://downloads.openwrt.org/releases/22.03.5/targets/x86/64/openwrt-sdk-22.03.5-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz
+        tar xf openwrt-sdk-22.03.5-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz
+        mv openwrt-sdk-22.03.5-x86-64_gcc-11.2.0_musl.Linux-x86_64 sdk
+
+    - name: Update Feed
+      run: |
+        cd sdk
+        echo "src-link luci_naiveproxy $GITHUB_WORKSPACE" >> feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: Load Custom Feed
+    - name: Configure SDK
       run: |
-        cd openwrt
-        echo "src-link luci_naiveproxy $GITHUB_WORKSPACE" >> feeds.conf.default
-        ./scripts/feeds update luci_naiveproxy
-        ./scripts/feeds install -a -p luci_naiveproxy
-
-    - name: Configure OpenWrt
-      run: |
-        cd openwrt
-        cp feeds.conf.default feeds.conf
-        cat >> .config <<EOF
-        CONFIG_TARGET_x86=y
-        CONFIG_TARGET_x86_64=y
-        CONFIG_TARGET_x86_64_DEVICE_generic=y
+        cd sdk
+        cat > .config <<EOF
+        CONFIG_ALL_NONSHARED=n
+        CONFIG_ALL_KMODS=n
+        CONFIG_ALL=n
         CONFIG_PACKAGE_luci-app-naiveproxy=y
         CONFIG_PACKAGE_naiveproxy=y
         EOF
         make defconfig
 
-    - name: Download Dependencies
-      run: |
-        cd openwrt
-        make download V=s
-        make tools/install -j$(nproc)
-        make toolchain/install -j$(nproc)
-
     - name: Build Package
       run: |
-        cd openwrt
-        make package/luci-app-naiveproxy/compile V=s -j1
+        cd sdk
+        make package/luci-app-naiveproxy/compile V=sc
 
-    - name: Upload IPK
+    - name: Show Build Directory
+      if: always()
+      run: |
+        cd sdk
+        echo "============== Build Directory =============="
+        ls -R bin/packages/
+        echo "============== Log Files =============="
+        find logs/ -type f -name "*.txt" -exec cat {} \;
+
+    - name: Upload Packages
       uses: actions/upload-artifact@v4
       with:
-        name: luci-app-naiveproxy-ipk
+        name: luci-packages-${{ matrix.arch }}
         path: |
-          openwrt/bin/packages/**/luci-app-naiveproxy_*.ipk
-          openwrt/bin/packages/**/naiveproxy_*.ipk
-
+          sdk/bin/packages/**/*.ipk
+          
     - name: Create Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          openwrt/bin/packages/**/luci-app-naiveproxy_*.ipk
-          openwrt/bin/packages/**/naiveproxy_*.ipk
-        tag_name: release-${{ github.sha }}
+        files: sdk/bin/packages/**/*.ipk
+        tag_name: v${{ github.run_number }}
+        title: Release ${{ github.run_number }}
         generate_release_notes: true
+
