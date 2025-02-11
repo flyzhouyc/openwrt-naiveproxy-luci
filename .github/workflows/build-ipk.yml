@@ -1,25 +1,15 @@
 name: Build NaiveProxy-Luci IPK
-
 on:
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-
-    - name: Set up OpenWrt SDK
-      #uses: actions/docker@v3
-      with:
-        name: openwrt/sdk
-        command: sh -c "sleep 3600" # Placeholder command, keep the container alive
-
     # Install dependencies required for OpenWrt compilation
     - name: Install dependencies
       run: |
@@ -28,7 +18,6 @@ jobs:
         sudo apt-get install -y python3 python2-minimal libpython3-dev python3-pip
         pip3 install --upgrade pip
         pip3 install shadowsocks-libev
-
     # Configure and compile NaiveProxy-Luci
     - name: Build IPK package
       run: |
@@ -37,24 +26,18 @@ jobs:
         # Update feeds
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-
         # Copy the custom package (NaiveProxy-Luci) into package directory
         cp -r ../../packages/luci-app-naiveproxy ./package/feeds/custom/luci-app-naiveproxy
-
         # Update and build
         make defconfig
         make -j4 download
         make -j4 V=s
-
         # Package the IPK
         make package/index
-
         # Collect the generated IPK
         cp bin/packages/flower/luci-app-naiveproxy_*.ipk ../release/
-
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: naiveproxy-luci.ipk
         path: release/luci-app-naiveproxy_*.ipk
-
