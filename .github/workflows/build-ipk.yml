@@ -10,14 +10,17 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-    - name: Install dependencies
+       - name: Install dependencies
       run: |
         sudo apt-get update
         # 尝试替换 azure 源为官方源，针对 ubuntu.sources 文件
         sudo sed -i 's|^URIs: http://azure.archive.ubuntu.com/ubuntu|URIs: http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
 
-        # 打印 ubuntu.sources 文件内容，用于检查 azure 源是否被替换
+        # 打印 ubuntu.sources 文件内容
         cat /etc/apt/sources.list.d/ubuntu.sources
+
+        # 打印 /etc/apt/apt-mirrors.txt 文件内容 (新增)
+        cat /etc/apt/apt-mirrors.txt
 
         sudo apt-get update
         # 启用 multiverse 仓库 (如果之前未启用，或者再次尝试确保启用)
