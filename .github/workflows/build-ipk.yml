@@ -62,21 +62,27 @@ jobs:
         cd sdk
         make package/luci-app-naiveproxy/compile V=sc
 
-    - name: Show Build Directory
+    - name: Show Build Results
       if: always()
       run: |
         cd sdk
         echo "============== Build Directory =============="
         ls -R bin/packages/
-        echo "============== Log Files =============="
-        find logs/ -type f -name "*.txt" -exec cat {} \;
+        echo "============== Package Contents =============="
+        find bin/packages/ -name "*.ipk" -exec ls -l {} \;
+        # 只在logs目录存在时才查找日志
+        if [ -d logs ]; then
+          echo "============== Log Files =============="
+          find logs/ -type f -name "*.txt" -exec cat {} \;
+        fi
 
     - name: Upload Packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: luci-packages-${{ matrix.arch }}
         path: |
           sdk/bin/packages/**/*.ipk
+
           
     - name: Create Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
