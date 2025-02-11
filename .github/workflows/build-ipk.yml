@@ -33,7 +33,7 @@ jobs:
       - name: Copy naiveproxy package definition
         run: |
           mkdir -p openwrt-source/package/net
-          cp -r ../naiveproxy openwrt-source/package/net/
+          cp -r ./naiveproxy openwrt-source/package/net/
 
       - name: Update and install feeds
         run: |
