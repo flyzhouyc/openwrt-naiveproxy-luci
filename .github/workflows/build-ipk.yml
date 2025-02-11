@@ -10,7 +10,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-       - name: Install dependencies
+    - name: Install dependencies
       run: |
         sudo apt-get update
         # 尝试替换 azure 源为官方源，针对 ubuntu.sources 文件
