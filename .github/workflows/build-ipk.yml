@@ -2,14 +2,14 @@ name: Build naiveproxy IPK
 
 on:
   push:
-    branches: [ "master" ] # 或者你想要触发工作流的分支
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-  workflow_dispatch: # 允许手动触发工作流
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 使用 Ubuntu 最新版本作为构建环境
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -18,7 +18,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '^1.20' # 或者你需要的 Go 版本
+          go-version: '^1.20'
 
       - name: Prepare build environment
         run: |
@@ -27,55 +27,59 @@ jobs:
 
       - name: Clone OpenWrt source code
         run: |
-          rm -rf openwrt-source
-          git clone --depth=1 https://git.openwrt.org/openwrt/openwrt.git openwrt-source
+          rm -rf openwrt-source # Ensure clean clone
+          git clone https://git.openwrt.org/openwrt/openwrt.git openwrt-source
           cd openwrt-source
 
       - name: Copy naiveproxy package definition
         run: |
           mkdir -p openwrt-source/package/net
-          cp -r ./naiveproxy openwrt-source/package/net/
+          cp -r ./naiveproxy openwrt-source/package/net/ # Assuming naiveproxy in repo root
 
-      - name: Update and install feeds
+      - name: Clean feeds and packages directories
         run: |
           cd openwrt-source
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          rm -rf feeds/* packages/* # Clean feeds and packages
+
+      - name: Update and install feeds (verbose output)
+        run: |
+          cd openwrt-source
+          ./scripts/feeds update -a -v # Verbose output for update
+          ./scripts/feeds install -a -v # Verbose output for install
+
+      - name: Check for diffconfig after feeds install
+        run: |
+          cd openwrt-source
+          ls -l scripts/diffconfig
+          if [ ! -f scripts/diffconfig ]; then
+            echo "Error: scripts/diffconfig is still missing after feeds install!"
+            exit 1 # Fail workflow if diffconfig is missing
+          fi
+
       - name: Configure build (x86_64 example)
         run: |
           cd openwrt-source
-          # 打印当前工作目录，确认是否已切换到 openwrt-source
-          pwd
-          # 列出 openwrt-source/scripts 目录的内容，确认 diffconfig 是否存在
-          ls -l scripts/diffconfig
-          ls -l scripts
-          # 生成默认的 .config 文件
-          #make defconfig
-           make menuconfig
-          # 示例配置：目标架构为 x86_64，并选择 naiveproxy 作为模块编译
-          # 你需要根据你的目标平台修改 .config 文件
+          make defconfig # Revert to make defconfig
           sed -i 's/# CONFIG_TARGET_x86_64 is not set/CONFIG_TARGET_x86_64=y/' .config
-          sed -i 's/# CONFIG_TARGET_PROFILE_DEFAULT is not set/CONFIG_TARGET_PROFILE_DEFAULT=y/' .config # 默认 Profile
-          sed -i '/CONFIG_PACKAGE_naiveproxy is not set/a CONFIG_PACKAGE_naiveproxy=m' .config # 将 naiveproxy 编译为模块 (IPK)
-          # 如果你需要其他配置，例如 LuCI 支持，可以在这里添加 sed 命令修改 .config
-          # 例如： sed -i '/CONFIG_PACKAGE_luci is not set/a CONFIG_PACKAGE_luci=y' .config
-          ./scripts/diffconfig .config .config.seed # 可选：生成 seed config 文件，用于记录配置
+          sed -i 's/# CONFIG_TARGET_PROFILE_DEFAULT is not set/CONFIG_TARGET_PROFILE_DEFAULT=y/' .config
+          sed -i '/CONFIG_PACKAGE_naiveproxy is not set/a CONFIG_PACKAGE_naiveproxy=m' .config
+          ./scripts/diffconfig .config .config.seed
 
       - name: Compile naiveproxy package
         run: |
           cd openwrt-source
-          make package/naiveproxy/compile V=s # V=s 参数用于显示详细编译输出
+          make package/naiveproxy/compile V=s
 
       - name: Find and upload IPK
         run: |
           cd openwrt-source
-          IPK_PATH=$(find bin/packages/x86_64/net -name "naiveproxy_*.ipk") # 查找生成的 IPK 文件
+          IPK_PATH=$(find bin/packages/x86_64/net -name "naiveproxy_*.ipk")
           echo "IPK path: $IPK_PATH"
-          echo "::set-output name=ipk_path::$IPK_PATH" # 将 IPK 路径设置为输出变量
-        id: find_ipk # 给这个 step 设置 ID，方便后续步骤引用输出
+          echo "::set-output name=ipk_path::$IPK_PATH"
+        id: find_ipk
 
       - name: Upload IPK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: naiveproxy-ipk # artifact 名称
-          path: ${{ steps.find_ipk.outputs.ipk_path }} # 上传找到的 IPK 文件路径
+          name: naiveproxy-ipk
+          path: ${{ steps.find_ipk.outputs.ipk_path }}
